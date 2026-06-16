@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Interactive dashboard to view, filter, search, and tweet Google Cloud BigQuery release notes and updates.">
+    <title>BigQuery Release Notes Dashboard</title>
+    <!-- Stylesheet -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="shortcut icon" href="https://ssl.gstatic.com/bigquery/images/favicon.ico" type="image/x-icon">
+</head>
+<body>
+
+    <!-- Header Section -->
+    <header>
+        <div class="header-container">
+            <div class="logo-section">
+                <!-- Google Cloud / BigQuery Inspired SVG Logo -->
+                <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M16 2L3 9.5V24.5L16 32L29 24.5V9.5L16 2Z" fill="url(#logoGrad)" />
+                    <path d="M16 8L7 13.2V21.8L16 27L25 21.8V13.2L16 8Z" fill="#080a0f" />
+                    <circle cx="16" cy="17.5" r="4.5" fill="#00e5ff" />
+                    <defs>
+                        <linearGradient id="logoGrad" x1="3" y1="2" x2="29" y2="32" gradientUnits="userSpaceOnUse">
+                            <stop stop-color="#8b5cf6" />
+                            <stop offset="1" stop-color="#00e5ff" />
+                        </linearGradient>
+                    </defs>
+                </svg>
+                <h1>BigQuery <span>Release Notes</span></h1>
+            </div>
+            
+            <div class="header-actions">
+                <span id="last-updated" class="last-updated">Syncing...</span>
+                <button id="refresh-btn" class="btn-primary" aria-label="Refresh Feed">
+                    <!-- Loading Spinner SVG -->
+                    <svg class="spinner" viewBox="0 0 50 50">
+                        <circle cx="25" cy="25" r="20" fill="none" stroke="currentColor" stroke-width="5" stroke-dasharray="80 150"></circle>
+                    </svg>
+                    <span>Refresh Feed</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main>
+        <!-- Sidebar Controls -->
+        <aside class="sidebar-panel">
+            <h2 class="panel-title">Filters & Search</h2>
+            
+            <!-- Search bar -->
+            <div class="filter-group">
+                <label for="search-input">Search Updates</label>
+                <div class="search-input-wrapper">
+                    <!-- Search Icon SVG -->
+                    <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                    <input type="text" id="search-input" placeholder="Search keywords, dates..." aria-label="Search release notes">
+                </div>
+            </div>
+
+            <!-- Categories Toggles -->
+            <div class="filter-group">
+                <label>Release Types</label>
+                <div class="category-checkboxes">
+                    <label class="checkbox-label">
+                        <input type="checkbox" value="Feature" checked>
+                        <span style="color: var(--color-feature)">●</span> Features
+                        <span id="count-feature" class="cat-count">0</span>
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" value="Issue" checked>
+                        <span style="color: var(--color-issue)">●</span> Issues
+                        <span id="count-issue" class="cat-count">0</span>
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" value="Breaking" checked>
+                        <span style="color: var(--color-breaking)">●</span> Breaking
+                        <span id="count-breaking" class="cat-count">0</span>
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" value="Announcement" checked>
+                        <span style="color: var(--color-announcement)">●</span> Announcements
+                        <span id="count-announce" class="cat-count">0</span>
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" value="Change" checked>
+                        <span style="color: var(--color-change)">●</span> Changes
+                        <span id="count-change" class="cat-count">0</span>
+                    </label>
+                </div>
+            </div>
+
+            <h2 class="panel-title">Summary Statistics</h2>
+            <!-- Statistics Block -->
+            <div class="stats-summary">
+                <div class="stat-card" style="grid-column: span 2">
+                    <div id="stat-total" class="stat-val">0</div>
+                    <div class="stat-lbl">Total Cached Items</div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Timeline Content -->
+        <section id="timeline-container" class="content-panel" aria-label="BigQuery Release Timeline">
+            <!-- Dynamically populated via JavaScript -->
+            <div class="loading-state">
+                <svg class="spinner" viewBox="0 0 50 50">
+                    <circle cx="25" cy="25" r="20" fill="none" stroke-width="5" stroke="currentColor"></circle>
+                </svg>
+                <h3>Loading Release Notes...</h3>
+                <p>Establishing connection to feed endpoint</p>
+            </div>
+        </section>
+    </main>
+
+    <!-- Twitter/X sharing dialog modal -->
+    <div id="tweet-modal" class="modal-overlay" aria-hidden="true" role="dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Tweet this BigQuery Update</h2>
+                <button id="close-tweet-btn" class="close-btn" aria-label="Close dialog">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            
+            <div class="tweet-box-wrapper">
+                <textarea id="tweet-textarea" class="tweet-textarea" placeholder="What's happening?" aria-label="Tweet composer"></textarea>
+            </div>
+
+            <div class="tweet-preview-banner">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                </svg>
+                <p>The post will contain a direct link referencing the official Google Cloud documentation for this release note.</p>
+            </div>
+
+            <div class="tweet-footer">
+                <span id="tweet-char-count" class="char-counter">0 / 280 characters</span>
+                <button id="publish-tweet-btn" class="btn-tweet">
+                    <span>Post to X</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast container -->
+    <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+    <!-- JavaScript script -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
